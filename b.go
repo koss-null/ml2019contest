@@ -28,19 +28,21 @@ type confusionElem struct {
 	fp float64
 }
 
-func normalize(m [][]float64) [][]float64 {
-	for row := range m {
-		divider := sumRow(m, row)
-		for i := range m[row] {
-			m[row][i] /= divider
-		}
+func (elem *confusionElem) F1() float64 {
+	var pr, re float64
+	if elem.tp + elem.fp != 0 {
+		pr = float64(elem.tp) / float64(elem.tp+elem.fp)
 	}
-	return m
+	if elem.tp + elem.tn!= 0 {
+		re = float64(elem.tp) / float64(elem.tp+elem.tn)
+	}
+	if pr + re == 0 { return 0 }
+	return 2 * pr * re / (pr + re)
 }
 
 func main() {
 	var k int
-	fmt.Scanf("%d\n", &k)
+	_, _ = fmt.Scanf("%d\n", &k)
 	reader := bufio.NewReader(os.Stdin)
 
 	confusion := make([][]float64, 0, k)
@@ -54,8 +56,6 @@ func main() {
 		}
 	}
 
-	confusion = normalize(confusion)
-
 	elemsAmount := 0.
 	elems := make([]confusionElem, k)
 	for i := range elems {
@@ -67,34 +67,36 @@ func main() {
 		elemsAmount += elems[i].tp + elems[i].tn
 	}
 
+	if  float64(elemsAmount) == 0 {
+		fmt.Printf("0\n0\n")
+		return
+	}
+
 	// macro
 	f1 := float64(0)
 	pr, re := float64(0), float64(0)
 	for _, elem := range elems {
-		weight := 1. // float64(elem.tp + elem.tn) / float64(elemsAmount)
-		if elem.tp + elem.tn != 0 {
-			pr += float64(elem.tp) / float64(elem.tp+elem.fp)
-		}
+		weight := float64(elem.tp + elem.tn) / float64(elemsAmount)
 		if elem.tp + elem.fp != 0 {
-			re += float64(elem.tp) / float64(elem.tp+elem.tn)
+			pr += weight * float64(elem.tp) / float64(elem.tp+elem.fp)
 		}
-		if pr + re != 0 {
-			f1 = weight * 2 * pr * re / (pr + re)
+		if elem.tp + elem.tn != 0 {
+			re += weight * float64(elem.tp) / float64(elem.tp+elem.tn)
 		}
+	}
+
+	if pr + re != 0 {
+		f1 = 2 * pr * re / (pr + re)
 	}
 
 	fmt.Println(f1)
 
 	// micro
-	f1 = float64(0)
-	tp, fp := 0., 0.
+	f1 = 0.
 	for _, elem := range elems {
-		weight := 1. // float64(elem.tp + elem.tn) / float64(elemsAmount)
-		tp += float64(elem.tp) * weight
-		fp += float64(elem.fp) * weight
+		weight := float64(elem.tp + elem.tn) / float64(elemsAmount)
+		f1 += weight * elem.F1()
 	}
-
-	f1 = float64(tp) / float64(tp+fp)
 
 	fmt.Println(f1)
 }
